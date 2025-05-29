@@ -1,0 +1,14 @@
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+
+# System
+.DS_Store
+TODO.md
+logs.txt
+.idea/
+secret.md
+tmp

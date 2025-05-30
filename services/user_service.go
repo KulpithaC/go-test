@@ -4,30 +4,26 @@ import (
 	"errors"
 
 	"github.com/KulpithaC/go-test/models"
+	"github.com/KulpithaC/go-test/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
-	users *[]models.User
+	userRepo *repository.UserRepository
 }
 
-func NewUserService(users *[]models.User) *UserService {
+func NewUserService(userRepo *repository.UserRepository) *UserService {
 	return &UserService{
-		users: users,
+		userRepo: userRepo,
 	}
 }
 
-func (s *UserService) GetAllUsers() []models.User {
-	return *s.users
+func (s *UserService) GetAllUsers() ([]models.User, error) {
+	return s.userRepo.GetAllUsers()
 }
 
 func (s *UserService) GetUserByID(id int) (*models.User, error) {
-	for _, user := range *s.users {
-		if user.ID == id {
-			return &user, nil
-		}
-	}
-	return nil, errors.New("user not found")
+	return s.userRepo.GetUserByID(id)
 }
 
 func (s *UserService) CreateUser(user *models.User) error {
@@ -36,8 +32,12 @@ func (s *UserService) CreateUser(user *models.User) error {
 		return errors.New("name, email, password are required")
 	}
 
-	// Check email
-	for _, u := range *s.users {
+	// Check email duplicate
+	users, err := s.userRepo.GetAllUsers()
+	if err != nil {
+		return err
+	}
+	for _, u := range users {
 		if u.Email == user.Email {
 			return errors.New("email already exists")
 		}
@@ -49,29 +49,25 @@ func (s *UserService) CreateUser(user *models.User) error {
 		return err
 	}
 
-	// Set user data
 	user.Password = string(hashedPassword)
-	user.ID = len(*s.users) + 1
 	user.Balance = 100
 
-	*s.users = append(*s.users, *user)
-
-	return nil
+	return s.userRepo.CreateUser(user)
 }
 
 func (s *UserService) Login(email, password string) (*models.User, error) {
-	// Check body
 	if email == "" || password == "" {
 		return nil, errors.New("email and password are required")
 	}
 
-	for _, user := range *s.users {
-		if user.Email == email {
-			if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-				return nil, errors.New("invalid email or password")
-			}
-			return &user, nil
-		}
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil, errors.New("invalid email or password")
 	}
-	return nil, errors.New("invalid email or password")
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("invalid email or password")
+	}
+
+	return user, nil
 }

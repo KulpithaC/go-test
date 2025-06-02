@@ -26,7 +26,12 @@ type UserResponse struct {
 }
 
 func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
-	users := h.userService.GetAllUsers()
+	users, err := h.userService.GetAllUsers()
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "User not found",
+		})
+	}
 
 	response := []UserResponse{}
 	for _, user := range users {
@@ -43,9 +48,10 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 
 func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
-
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request",
+		})
 	}
 
 	user, err := h.userService.GetUserByID(id)
@@ -69,11 +75,15 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 	user := new(models.User)
 
 	if err := c.BodyParser(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request",
+		})
 	}
 
 	if err := h.userService.CreateUser(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	response := UserResponse{
@@ -94,7 +104,9 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 
 	req := new(LoginRequest)
 	if err := c.BodyParser(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request",
+		})
 	}
 
 	_, err := h.userService.Login(req.Email, req.Password)
